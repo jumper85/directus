@@ -5,6 +5,9 @@ Icon
 .vscode
 .ddev
 
+vendor/
+composer.lock
+
 # Ignore dev files
 /.idea
 node_modules
