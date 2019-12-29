@@ -27,6 +27,9 @@ class FilesystemFactory
             case 's3':
                 return self::createS3Adapter($config, $rootKey);
                 break;
+            case 'minio':
+                return self::createMinioAdapter($config, $rootKey);
+                break;
             case 'local':
             default:
                 return self::createLocalAdapter($config, $rootKey);
@@ -91,5 +94,21 @@ class FilesystemFactory
         $flysystem->addPlugin(new PutFile());
         
         return $flysystem;
+    }
+    
+    public static function createMinioAdapter(Array $config, $rootKey = 'root') {
+        $client = S3Client::factory([
+            'credentials'                 => [
+                'key'    => $config['key'],
+                'secret' => $config['secret'],
+            ],
+            'region'                      => $config['region'],
+            'version'                     => ($config['version'] ? : 'latest'),
+            'endpoint'                    => $config['minio_endpoint'],
+            'use_path_style_endpoint'     => true,
+            'override_visibility_on_copy' => 'public', // minio doesn't support acls so we set it to public
+        ]);
+        
+        return new Flysystem(new S3Adapter($client, $config['bucket'], array_get($config, $rootKey)));
     }
 }
