@@ -155,12 +155,15 @@ function sanitize(string $content): string {
 return [
     'filters' => [
         'item.create.page:before' => function (Payload $payload) {
-            $payload->set('content', sanitize($payload->get('content')));
-
+            if ($payload->get('content')) {
+                $payload->set('content', sanitize($payload->get('content')));
+            }
             return $payload;
         },
         'item.update.page:before' => function (Payload $payload) {
-            $payload->set('content', sanitize($payload->get('content')));
+            if ($payload->get('content')) {
+                $payload->set('content', sanitize($payload->get('content')));
+            }
 
             return $payload;
         }
