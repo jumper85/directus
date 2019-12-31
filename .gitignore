@@ -49,6 +49,7 @@ deploy.*
 ##  Hooks
 !/public/extensions/custom/hooks/_products
 !/public/extensions/custom/hooks/_webhook
+!/public/extensions/custom/hooks/read-user-hook.php
 !/public/extensions/custom/hooks/register-hook.php
 !/public/extensions/custom/hooks/sanitize-hook.php
 
