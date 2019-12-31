@@ -52,6 +52,7 @@ deploy.*
 !/public/extensions/custom/hooks/read-user-hook.php
 !/public/extensions/custom/hooks/register-hook.php
 !/public/extensions/custom/hooks/sanitize-hook.php
+!/public/extensions/custom/hooks/update-user-hook.php
 
 !/public/extensions/custom/mail/*
 
