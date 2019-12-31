@@ -12,7 +12,7 @@ return [
             /** @var Acl $acl */
             $acl = $app->fromContainer('acl');
 
-            if (!$acl->isPublic()) {
+            if (!$acl->isPublic() && !$acl->isAdmin()) {
                 $users = $payload->getData();
 
                 $currentUserId = $acl->getUserId();
