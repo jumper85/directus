@@ -144,6 +144,26 @@ function sanitize(string $content): string {
             case 'paragraph':
                 $blockInfo['data']['text'] = $sanitizer->sanitize($blockInfo['data']['text']);
                 break;
+            case 'quote':
+                $blockInfo['data']['text'] = $sanitizer->sanitize($blockInfo['data']['text']);
+                $blockInfo['data']['caption'] = $sanitizer->sanitize($blockInfo['data']['caption']);
+                break;
+            case 'list':
+                foreach ($blockInfo['data']['items'] as $itemIndex => $item) {
+                    $blockInfo['data']['items'][$itemIndex] = $sanitizer->sanitize($item);
+                }
+                break;
+            case 'table':
+                foreach ($blockInfo['data']['content'] as $rowIndex => $row) {
+                    foreach ($row as $cellIndex => $cellContent) {
+                        $blockInfo['data']['content'][$rowIndex][$cellIndex] = $sanitizer->sanitize($cellContent);
+                    }
+                }
+                break;
+            case 'warning':
+                $blockInfo['data']['title'] = $sanitizer->sanitize($blockInfo['data']['title']);
+                $blockInfo['data']['message'] = $sanitizer->sanitize($blockInfo['data']['message']);
+                break;
         }
 
         $content['blocks'][$index] = $blockInfo;
