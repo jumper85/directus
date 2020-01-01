@@ -124,6 +124,10 @@ function getSanitizer(): SanitizerInterface
     );
 }
 
+function replaceStrongTag (string $content): string {
+    return str_replace(['<strong>', '</strong>'], ['<b>', '</b>'], $content);
+}
+
 function sanitize(string $content): string {
     $content = json_decode($content, true);
 
@@ -142,27 +146,27 @@ function sanitize(string $content): string {
                 $blockInfo['data']['file']['url'] = $dataUri;
                 break;
             case 'paragraph':
-                $blockInfo['data']['text'] = $sanitizer->sanitize($blockInfo['data']['text']);
+                $blockInfo['data']['text'] = replaceStrongTag($sanitizer->sanitize($blockInfo['data']['text']));
                 break;
             case 'quote':
-                $blockInfo['data']['text'] = $sanitizer->sanitize($blockInfo['data']['text']);
-                $blockInfo['data']['caption'] = $sanitizer->sanitize($blockInfo['data']['caption']);
+                $blockInfo['data']['text'] = replaceStrongTag($sanitizer->sanitize($blockInfo['data']['text']));
+                $blockInfo['data']['caption'] = replaceStrongTag($sanitizer->sanitize($blockInfo['data']['caption']));
                 break;
             case 'list':
                 foreach ($blockInfo['data']['items'] as $itemIndex => $item) {
-                    $blockInfo['data']['items'][$itemIndex] = $sanitizer->sanitize($item);
+                    $blockInfo['data']['items'][$itemIndex] = replaceStrongTag($sanitizer->sanitize($item));
                 }
                 break;
             case 'table':
                 foreach ($blockInfo['data']['content'] as $rowIndex => $row) {
                     foreach ($row as $cellIndex => $cellContent) {
-                        $blockInfo['data']['content'][$rowIndex][$cellIndex] = $sanitizer->sanitize($cellContent);
+                        $blockInfo['data']['content'][$rowIndex][$cellIndex] = replaceStrongTag($sanitizer->sanitize($cellContent));
                     }
                 }
                 break;
             case 'warning':
-                $blockInfo['data']['title'] = $sanitizer->sanitize($blockInfo['data']['title']);
-                $blockInfo['data']['message'] = $sanitizer->sanitize($blockInfo['data']['message']);
+                $blockInfo['data']['title'] = replaceStrongTag($sanitizer->sanitize($blockInfo['data']['title']));
+                $blockInfo['data']['message'] = replaceStrongTag($sanitizer->sanitize($blockInfo['data']['message']));
                 break;
         }
 
