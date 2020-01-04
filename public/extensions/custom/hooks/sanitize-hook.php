@@ -190,6 +190,19 @@ return [
             }
 
             return $payload;
+        },
+        'item.create.comment:before' => function (Payload $payload) {
+            if ($payload->get('content')) {
+                $payload->set('content', sanitize($payload->get('content')));
+            }
+            return $payload;
+        },
+        'item.update.comment:before' => function (Payload $payload) {
+            if ($payload->get('content')) {
+                $payload->set('content', sanitize($payload->get('content')));
+            }
+
+            return $payload;
         }
     ]
 ];
