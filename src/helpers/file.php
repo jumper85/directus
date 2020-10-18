@@ -120,29 +120,36 @@ if (!function_exists('append_storage_information')) {
         $proxyDownloads = $config->get('storage.proxy_downloads');
         $fileRootUrl = $config->get('storage.root_url');
         $hasFileRootUrlHost = parse_url($fileRootUrl, PHP_URL_HOST);
-        $isLocalStorageAdapter = $config->get('storage.adapter') == 'local';
+
         $list = isset($rows[0]);
 
         if (!$list) {
             $rows = [$rows];
         }
 
+        $assetURLNaming = get_directus_setting('asset_url_naming');
+        $projectName = get_api_project_from_request();
+        $basepath = get_base_path();
+
         foreach ($rows as &$row) {
             $data = [];
             $ext = pathinfo($row['filename_disk'], PATHINFO_EXTENSION);
+
+            $fileAlias = $assetURLNaming == "private_hash" ? $row['private_hash'] : $row['filename_download'];
 
             if ($proxyDownloads) {
                 $data['url'] = get_proxy_path($row['filename_disk']);
                 $data['full_url'] = get_url($data['url']);
             } else {
-                if(isset($row['private_hash'])){
+                if (isset($row['private_hash'])) {
                     $data['url'] = $data['full_url'] = $fileRootUrl . '/' . $row['filename_disk'];
+                    $data['asset_url'] = $basepath . $projectName . '/assets/' . $fileAlias;
+
                     // Add Full url
                     if (!$hasFileRootUrlHost) {
                         $data['full_url'] = get_url($data['url']);
                     }
                 }
-
             }
 
             // Add thumbnails if the asset is an image
@@ -204,13 +211,16 @@ if (!function_exists('get_thumbnails')) {
     function get_thumbnails(array $row)
     {
 
+        $thumbnailURLPattern =  get_directus_setting('asset_url_naming');
+        $urlAlias = $thumbnailURLPattern == "private_hash" ? $row['private_hash'] : $row['filename_download'];
+
         $filename = $row['filename_disk'];
         $type = array_get($row, 'type');
         $thumbnailFilenameParts = explode('.', $filename);
         $thumbnailExtension = array_pop($thumbnailFilenameParts);
 
-        $systemThumb = json_decode(get_directus_setting('asset_whitelist_system'),true);
-        $whitelistThumb = json_decode(get_directus_setting('asset_whitelist'),true);
+        $systemThumb = json_decode(get_directus_setting('asset_whitelist_system'), true);
+        $whitelistThumb = json_decode(get_directus_setting('asset_whitelist'), true);
         $thumbnailWhitelist = !empty($whitelistThumb) ? array_merge($systemThumb, $whitelistThumb) : $systemThumb;
 
         $fileExtension = MimeTypeUtils::getFromMimeType($type);
@@ -225,12 +235,13 @@ if (!function_exists('get_thumbnails')) {
                 $thumbnailExtension = Thumbnail::defaultFormat();
             }
 
-            $thumbnailUrl = get_thumbnail_url($row['private_hash'],$thumbnail);
-            $thumbnailRelativeUrl = get_thumbnail_path($row['private_hash'], $thumbnail, true);
+            $thumbnailUrl = get_thumbnail_url($urlAlias, $thumbnail);
+            $thumbnailRelativeUrl = get_thumbnail_path($urlAlias, $thumbnail, true);
             $thumbnails[] = [
+                'key' => $thumbnail['key'],
                 'url' => $thumbnailUrl,
                 'relative_url' => $thumbnailRelativeUrl,
-                'dimension' => $thumbnail['width'].'x'.$thumbnail['height'],
+                'dimension' => $thumbnail['width'] . 'x' . $thumbnail['height'],
                 'width' => (int) $thumbnail['width'],
                 'height' => (int) $thumbnail['height'],
             ];
@@ -248,7 +259,7 @@ if (!function_exists('get_thumbnail_url')) {
      *
      * @return string
      */
-    function get_thumbnail_url($name,$thumbnail)
+    function get_thumbnail_url($name, $thumbnail)
     {
         return get_url(get_thumbnail_path($name, $thumbnail));
     }
@@ -420,7 +431,7 @@ if (!function_exists('validate_file_size')) {
     {
         $maxSize = $options;
         if ($options == null) {
-            $maxSize = get_directus_setting('file_max_size');
+            $maxSize = \Directus\get_max_upload_size();
         }
         $size = $maxSize;
         $factors = [
@@ -442,7 +453,7 @@ if (!function_exists('validate_file_size')) {
             throw new InvalidRequestException($message);
         }
 
-        if ($value > $maxSize) {
+        if ($value > $maxSize && $maxSize != 0) {
             $message = 'The file is too large. Allowed maximum size is ' . $size . '.';
             throw new InvalidRequestException($message);
         }
@@ -467,8 +478,6 @@ if (!function_exists('get_file_root_url')) {
 if (!function_exists('get_random_string')) {
     function get_random_string($limit = 16)
     {
-     return substr(base_convert(sha1(uniqid(mt_rand())), 16, 36), 0,$limit);
+        return substr(base_convert(sha1(uniqid(mt_rand())), 16, 36), 0, $limit);
     }
 }
-
-

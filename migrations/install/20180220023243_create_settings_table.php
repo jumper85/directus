@@ -123,7 +123,7 @@ class CreateSettingsTable extends AbstractMigration
                 'collection' => 'directus_settings',
                 'field' => 'telemetry',
                 'type' => \Directus\Database\Schema\DataTypes::TYPE_BOOLEAN,
-                'interface' => 'toggle',
+                'interface' => 'switch',
                 'locked' => 1,
                 'width' => 'half',
                 'note' => '<a href="https://docs.directus.io/getting-started/concepts.html#telemetry" target="_blank">Learn More</a>',
@@ -162,7 +162,7 @@ class CreateSettingsTable extends AbstractMigration
                 'collection' => 'directus_settings',
                 'field' => 'sort_null_last',
                 'type' => \Directus\Database\Schema\DataTypes::TYPE_BOOLEAN,
-                'interface' => 'toggle',
+                'interface' => 'switch',
                 'locked' => 1,
                 'note' => 'NULL values are sorted last',
                 'width' => 'half',
@@ -229,6 +229,19 @@ class CreateSettingsTable extends AbstractMigration
             ],
             [
                 'collection' => 'directus_settings',
+                'field' => 'auth_token_ttl',
+                'type' => 'integer',
+                'note' => 'Minutes the API authorization token will last',
+                'interface' => 'numeric',
+                'options' => json_encode([
+                    'iconRight' => 'timer'
+                ]),
+                'sort' => 25,
+                'locked' => 1,
+                'width' => 'half'
+            ],
+            [
+                'collection' => 'directus_settings',
                 'field' => 'files_divider',
                 'type' => \Directus\Database\Schema\DataTypes::TYPE_ALIAS,
                 'interface' => 'divider',
@@ -260,16 +273,19 @@ class CreateSettingsTable extends AbstractMigration
             ],
             [
                 'collection' => 'directus_settings',
-                'field' => 'file_max_size',
+                'field' => 'asset_url_naming',
                 'type' => \Directus\Database\Schema\DataTypes::TYPE_STRING,
-                'interface' => 'text-input',
-                'options' => json_encode([
-                    'placeholder' => 'eg: 4MB',
-                    'iconRight' => 'storage'
-                ]),
+                'interface' => 'dropdown',
                 'locked' => 1,
                 'width' => 'half',
-                'sort' => 32
+                'note' => 'Thumbnail URL convention',
+                'sort' => 32,
+                'options' => json_encode([
+                    'choices' => [
+                        'private_hash' => 'Private Hash (Obfuscated)',
+                        'filename_download' => 'File Name (Readable)'
+                    ]
+                ])
             ],
             [
                 'collection' => 'directus_settings',
@@ -279,8 +295,9 @@ class CreateSettingsTable extends AbstractMigration
                 'options' => json_encode([
                     'placeholder' => 'Enter a file mimetype then hit enter (eg: image/jpeg)'
                 ]),
+                'note' => 'Enter a file mimetype then hit enter (eg: image/jpeg)',
                 'locked' => 1,
-                'width' => 'full',
+                'width' => 'half',
                 'sort' => 33
             ],
             [
@@ -299,7 +316,10 @@ class CreateSettingsTable extends AbstractMigration
                             'interface' => 'slug',
                             'width' => 'half',
                             'type' => 'string',
-                            'required' => true
+                            'required' => true,
+                            'options' => [
+                                'onlyOnCreate' => false
+                            ]
                         ],
                         [
                             'field' => 'fit',
@@ -370,8 +390,8 @@ class CreateSettingsTable extends AbstractMigration
             ],
         ];
 
-        foreach($data as $value){
-            if(!$this->checkFieldExist($value['collection'], $value['field'])){
+        foreach ($data as $value) {
+            if (!$this->checkFieldExist($value['collection'], $value['field'])) {
                 $fileds = $this->table('directus_fields');
                 $fileds->insert($value)->save();
             }
@@ -380,76 +400,80 @@ class CreateSettingsTable extends AbstractMigration
         // Insert into settings table
         $data = [
             [
-              'key' => 'project_url',
-              'value' => ''
+                'key' => 'project_url',
+                'value' => ''
             ],
             [
-              'key' => 'project_logo',
-              'value' => ''
+                'key' => 'project_logo',
+                'value' => ''
             ],
             [
-              'key' => 'project_color',
-              'value' => '#263238',
+                'key' => 'project_color',
+                'value' => '#263238',
             ],
             [
-              'key' => 'project_foreground',
-              'value' => '',
+                'key' => 'project_foreground',
+                'value' => '',
             ],
             [
-              'key' => 'project_background',
-              'value' => '',
+                'key' => 'project_background',
+                'value' => '',
             ],
             [
-              'key' => 'project_public_note',
-              'value' => '',
+                'key' => 'project_public_note',
+                'value' => '',
             ],
             [
-              'key' => 'default_locale',
-              'value' => 'en-US',
+                'key' => 'default_locale',
+                'value' => NULL,
             ],
             [
-              'key' => 'telemetry',
-              'value' => '1',
+                'key' => 'telemetry',
+                'value' => '1',
             ],
             [
-              'key' => 'default_limit',
-              'value' => '200'
+                'key' => 'default_limit',
+                'value' => '200'
             ],
             [
-              'key' => 'sort_null_last',
-              'value' => '1'
+                'key' => 'sort_null_last',
+                'value' => '1'
             ],
             [
-              'key' => 'password_policy',
-              'value' => ''
+                'key' => 'password_policy',
+                'value' => ''
             ],
             [
-              'key' => 'auto_sign_out',
-              'value' => '10080'
+                'key' => 'auto_sign_out',
+                'value' => '10080'
             ],
             [
-              'key' => 'login_attempts_allowed',
-              'value' => '10'
+                'key' => 'login_attempts_allowed',
+                'value' => '25'
             ],
             [
-              'key' => 'trusted_proxies',
-              'value' => ''
+                'key' => 'auth_token_ttl',
+                'value' => '20'
             ],
             [
-              'key' => 'file_max_size',
-              'value' => '100MB'
+                'key' => 'trusted_proxies',
+                'value' => ''
             ],
             [
-              'key' => 'file_mimetype_whitelist',
-              'value' => ''
+                'key' => 'file_mimetype_whitelist',
+                'value' => ''
             ],
             [
                 'key' => 'file_naming',
                 'value' => 'uuid'
             ],
             [
-              'key' => 'youtube_api_key',
-              'value' => ''
+                'key' => 'asset_url_naming',
+                'value' => 'private_hash'
+            ],
+            [
+                'key' => 'youtube_api_key',
+                'value' => ''
             ],
             [
                 'key' => 'asset_whitelist',
@@ -510,13 +534,14 @@ class CreateSettingsTable extends AbstractMigration
                     ]
                 ])
             ]
-          ];
+        ];
 
-          $groups = $this->table('directus_settings');
-          $groups->insert($data)->save();
+        $groups = $this->table('directus_settings');
+        $groups->insert($data)->save();
     }
 
-    public function checkFieldExist($collection,$field){
+    public function checkFieldExist($collection, $field)
+    {
         $checkSql = sprintf('SELECT 1 FROM `directus_fields` WHERE `collection` = "%s" AND `field` = "%s";', $collection, $field);
         return $this->query($checkSql)->fetch();
     }

@@ -2,6 +2,7 @@
 
 namespace Directus\Application\Http\Middleware;
 
+use Directus\Api\Routes\Auth;
 use Directus\Cache\Response as CacheResponse;
 use Directus\Application\Http\Request;
 use Directus\Application\Http\Response;
@@ -77,8 +78,10 @@ class ResponseCacheMiddleware extends AbstractMiddleware
                 $userSessionService->destroy([
                     'token_expired_at < ?' => DateTimeUtils::now()->toString()
                 ]);
-                $expirationMinutes =  get_directus_setting('auto_sign_out');
-                $expiry = new \DateTimeImmutable('now + ' . $expirationMinutes . 'minutes');
+
+                //Use the common function for getting expiration time
+                $auth=new Auth($this->container);
+                $expiry = $auth->getSessionExpiryTime();
 
                 switch ($authorizationTokenObject['type']) {
                     case DirectusUserSessionsTableGateway::TOKEN_COOKIE:
@@ -96,7 +99,15 @@ class ResponseCacheMiddleware extends AbstractMiddleware
                             ]
                         );
 
-                        $response =  $response->withAddedHeader('Set-Cookie', $cookie->toHeaders());
+                        $cookieAsString = $cookie->toHeaders()[0];
+
+                        $cookieAsString .= '; SameSite=' . $config->get('cookie.same_site');
+
+                        if ($config->get('cookie.secure')) {
+                            $cookieAsString .= '; Secure';
+                        }
+
+                        $response =  $response->withAddedHeader('Set-Cookie', $cookieAsString);
                         break;
                     default:
                         $userSession = $userSessionService->find(['token' => $authorizationTokenObject['token']]);
@@ -119,10 +130,17 @@ class ResponseCacheMiddleware extends AbstractMiddleware
                 ]
             );
 
-            $response =  $response->withAddedHeader('Set-Cookie', $cookie->toHeaders());
+            $cookieAsString = $cookie->toHeaders()[0];
+
+            $cookieAsString .= '; SameSite=' . $config->get('cookie.same_site');
+
+            if ($config->get('cookie.secure')) {
+                $cookieAsString .= '; Secure';
+            }
+
+            $response =  $response->withAddedHeader('Set-Cookie', $cookieAsString);
         }
 
-        $response = $response->withHeader('Access-Control-Allow-Origin', $request->getHeader('Origin'));
         $config = $container->get('config');
         if ($config->get('cors.credentials')) {
             $response = $response->withHeader('Access-Control-Allow-Credentials', 'true');

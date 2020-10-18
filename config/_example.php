@@ -40,6 +40,11 @@ return [
         'credentials' => false,     // Access-Control-Allow-Credentials
     ],
 
+    'cookie' => [                   // Controls for the auth cookie mode
+        'same_site' => 'Strict',    // Set the SameSite flag
+        'secure' => false           // Add the Secure flag
+    ],
+
     'rate_limit' => [
         'enabled' => false,         // Enable or disable all rate limiting
         'limit' => 100,             // Number of requests allowed...
@@ -53,7 +58,7 @@ return [
     'storage' => [
         'adapter' => 'local',       // What storage adapter to use for files
                                     // Defaults to the local filesystem. Other natively supported
-                                    // options include: Amazon S3, Aliyun OSS
+                                    // options include: Amazon S3, Aliyun OSS, Azure
                                     // You'll need to require the correct flysystem adapters through Composer
                                     // See https://docs.directus.io/extensions/storage-adapters.html#using-aws-s3
 
@@ -72,7 +77,7 @@ return [
         // 'bucket' => 's3-bucket',
         // 'options' => [
         //    'ACL' => 'public-read',
-        //    'Cache-Control' => 'max-age=604800'
+        //    'CacheControl' => 'max-age=604800'
         // ],
         // 'endpoint' => 's3-endpoint',
 
@@ -82,6 +87,11 @@ return [
         // 'OSS_ACCESS_KEY' => 'aliyun-oss-key',
         // 'OSS_ENDPOINT' => 'aliyun-oss-endpoint',
         // 'OSS_BUCKET' => 'aliyun-oss-bucket',
+
+        // Azure Blob Storage
+        ////////////////////////////////////////
+        // 'azure_connection_string' => 'azure-connection-string'
+        // 'azure_container' => 'azure-container'
     ],
 
     'mail' => [

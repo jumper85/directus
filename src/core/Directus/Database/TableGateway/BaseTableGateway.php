@@ -398,9 +398,26 @@ class BaseTableGateway extends TableGateway
         if ($columnObject->hasAutoIncrement()) {
             $recordData[$primaryKey] = $TableGateway->getLastInsertValue();
         }
+        else if ($columnObject->hasPrimaryKey())
+        {
+            // identify the autoincrement field+value to retrieve the new record
+            $fieldAutoIncrement = null;
+            foreach($this->getTableSchema()->getFields() as $f) {
+                if ($f->hasAutoIncrement()) {
+                    $fieldAutoIncrement = $f->getName();
+                    $lastInsertValue = $TableGateway->getLastInsertValue();
+                    break;
+                }
+            }
+
+            // retrieve the full record
+            if (isset($fieldAutoIncrement)) {
+                $record = $this->findOneBy($fieldAutoIncrement, $lastInsertValue);
+                $recordData[$primaryKey] = $record[$primaryKey];
+            }
+        }
 
         $columns = SchemaService::getAllNonAliasCollectionFieldNames($this->table);
-
         return $TableGateway->fetchAll(function (Select $select) use ($recordData, $columns, $primaryKey) {
             $select
                 ->columns($columns)
@@ -645,7 +662,24 @@ class BaseTableGateway extends TableGateway
     public function castFloatIfNumeric(&$value, $key)
     {
         if ($key != 'table_name') {
-            $value = is_numeric($value) && preg_match('/^-?(?:\d+|\d*\.\d+)$/', $value) ? (float) $value : $value;
+
+            // anything that "looks like" a number
+            if(is_numeric($value)) {
+
+                // match any string with a comma
+                // e.g. "3.14159265358979323846264338327950288419"
+                // warning: number will be truncated to 16 digits (IEEE 754)
+                if(preg_match('/^-?(\d*\.\d+)$/', $value) === TRUE) {
+                    $value = (float) $value;
+                }
+
+                // match any string with an integer number
+                // of any integer number, e.g.
+                // "+/-14159265358979323846264338327950288419"
+                // +/-14159265358979323846264338327950288419
+                else
+                    $value = (int) $value;
+            }
         }
     }
 
@@ -797,6 +831,22 @@ class BaseTableGateway extends TableGateway
         }
 
         $resultData = $insertTableGateway->find($generatedValue);
+
+        // try to retrieve the record using another field
+        if (empty($resultData)) {
+            $columnObject = $this->getTableSchema()->getField($this->primaryKeyFieldName);
+            if ($columnObject->hasPrimaryKey()) {
+                $fieldAutoIncrement = null;
+                foreach($this->getTableSchema()->getFields() as $f) {
+                    $fieldAutoIncrement = $f->getName();
+                    $lastInsertValue = $this->getLastInsertValue();
+                    break;
+                }
+
+                if (isset($fieldAutoIncrement))
+                    $resultData = $this->findOneBy($fieldAutoIncrement, $lastInsertValue);
+            }
+        }
 
         if ($useFilter) {
             $this->runHook('item.create', [$insertTable, $resultData]);
@@ -959,10 +1009,6 @@ class BaseTableGateway extends TableGateway
      */
     public function convertDates(array $records, Collection $tableSchema, $tableName = null)
     {
-        if (!$this->schemaManager->isSystemCollection($this->table)) {
-            return $records;
-        }
-
         // ==========================================================================
         // hotfix: records sometimes are no set as an array of rows.
         // NOTE: this code is duplicate @see: AbstractSchema::parseRecordValuesByType
@@ -975,7 +1021,7 @@ class BaseTableGateway extends TableGateway
 
         foreach ($records as $index => $row) {
             foreach ($tableSchema->getFields(array_keys($row)) as $column) {
-                if (!DataTypes::isDateTimeType($column->getType()) || !isset($row[$column->getName()])) {
+                if (!DataTypes::isSystemDateTimeType($column->getType()) || !isset($row[$column->getName()])) {
                     continue;
                 }
 
@@ -1164,7 +1210,7 @@ class BaseTableGateway extends TableGateway
         }
 
         // If User can read all items, nothing else needs to be checked
-        if ($this->acl->canReadAll($this->table)) {
+        if (empty($statuses) && $this->acl->canReadAll($this->table)) {
             return;
         }
 

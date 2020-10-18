@@ -2,20 +2,25 @@
 
 namespace Directus\Config\Schema;
 
+use Directus\Config\Context;
+
 /**
- * Config schema
+ * Config schema.
  */
-class Schema {
+class Schema
+{
     /**
-     * Gets the configuration schema
+     * Gets the configuration schema.
+     *
      * @return Node
      */
-    public static function get() {
-        $isEnv = getenv("DIRECTUS_USE_ENV") === "1";
+    public static function get()
+    {
+        $isEnv = Context::is_env();
         if ($isEnv) {
-            $loggerPath = "php://stdout";
+            $loggerPath = 'php://stdout';
         } else {
-            $loggerPath = realpath(__DIR__ . '/../../../../../logs');
+            $loggerPath = realpath(__DIR__.'/../../../../../logs');
         }
 
         return new Group('directus', [
@@ -42,8 +47,9 @@ class Schema {
                     new Value('adapter', Types::STRING, 'filesystem'),
                     new Value('path', Types::STRING, '../cache/'),
                     new Value('host', Types::STRING, 'localhost'),
+                    new Value('auth', Types::STRING, null),
                     new Value('port', Types::INTEGER, 6379),
-                ])
+                ]),
             ]),
             new Group('storage', [
                 new Value('adapter', Types::STRING, 'local'),
@@ -61,7 +67,7 @@ class Schema {
                 new Value('endpoint?', Types::STRING, 's3-endpoint'),
                 new Group('options', [
                     new Value('ACL', Types::STRING, 'public-read'),
-                    new Value('Cache-Control', Types::STRING, 'max-age=604800')
+                    new Value('CacheControl', Types::STRING, 'max-age=604800'),
                 ]),
 
                 // OSS
@@ -69,6 +75,10 @@ class Schema {
                 new Value('OSS_ACCESS_KEY?', Types::STRING, 'oss-access-secret'),
                 new Value('OSS_BUCKET?', Types::STRING, 'oss-bucket'),
                 new Value('OSS_ENDPOINT?', Types::STRING, 'oss-endpoint'),
+
+                // Azure
+                new Value('azure_connection_string', Types::STRING, 'azure-connection-string'),
+                new Value('azure_container', Types::STRING, 'azure-container'),
 
                 // TODO: Missing keys?
             ]),
@@ -80,8 +90,12 @@ class Schema {
                     new Value('port?', Types::STRING, ''),
                     new Value('username?', Types::STRING, ''),
                     new Value('password?', Types::STRING, ''),
-                    new Value('encryption?', Types::STRING, '')
+                    new Value('encryption?', Types::STRING, ''),
                 ]),
+            ]),
+            new Group('cookie', [
+                new Value('same_site', Types::STRING, 'Lax'),
+                new Value('secure', Types::BOOLEAN, false),
             ]),
             new Group('cors', [
                 new Value('enabled', Types::BOOLEAN, true),
@@ -92,7 +106,7 @@ class Schema {
                     'PUT',
                     'PATCH',
                     'DELETE',
-                    'HEAD'
+                    'HEAD',
                 ]),
                 new Value('headers', Types::ARRAY, []),
                 new Value('exposed_headers', Types::ARRAY, []),
@@ -116,11 +130,12 @@ class Schema {
             new Group('auth', [
                 new Value('secret_key', Types::STRING, '<type-a-secret-authentication-key-string>'),
                 new Value('public_key', Types::STRING, '<type-a-public-authentication-key-string>'),
+                new Value('ttl', Types::INTEGER, 20),
                 new Group('social_providers', [
                     new Group('okta?', [
                         new Value('client_id', Types::STRING, ''),
                         new Value('client_secret', Types::STRING, ''),
-                        new Value('base_url', Types::STRING, 'https://dev-000000.oktapreview.com/oauth2/default')
+                        new Value('base_url', Types::STRING, 'https://dev-000000.oktapreview.com/oauth2/default'),
                     ]),
                     new Group('github?', [
                         new Value('client_id', Types::STRING, ''),

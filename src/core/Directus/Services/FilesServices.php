@@ -6,6 +6,7 @@ use Directus\Application\Container;
 use Directus\Database\Schema\SchemaManager;
 use Directus\Exception\BadRequestException;
 use Directus\Exception\BatchUploadNotAllowedException;
+use Zend\Db\Sql\Select;
 use function Directus\is_a_url;
 use function Directus\validate_file;
 use function Directus\get_directus_setting;
@@ -13,7 +14,6 @@ use Directus\Util\ArrayUtils;
 use Directus\Util\DateTimeUtils;
 use Directus\Validator\Exception\InvalidRequestException;
 use function Directus\get_random_string;
-use Directus\Application\Application;
 
 class FilesServices extends AbstractService
 {
@@ -48,14 +48,13 @@ class FilesServices extends AbstractService
         $this->validate($data, array_merge(['data' => 'required'], $validationConstraints));
 
         $files = $this->container->get('files');
-        $result=$files->getFileSizeType($data['data']);
+        $result = $files->getFileSizeType($data['data']);
 
-        if(get_directus_setting('file_mimetype_whitelist') != null){
-            validate_file($result['mimeType'],'mimeTypes');
+        if (get_directus_setting('file_mimetype_whitelist') != null) {
+            validate_file($result['mimeType'], 'mimeTypes');
         }
-
-        if(get_directus_setting('file_max_size') != null){
-            validate_file($result['size'],'maxSize');
+        if($result['mimeType'] != 'embed/vimeo' && $result['mimeType'] != 'embed/youtube'){
+            validate_file($result['size'], 'maxSize');
         }
 
         $recordData = $this->getSaveData($data, false);
@@ -69,16 +68,19 @@ class FilesServices extends AbstractService
         );
     }
 
-    public function getSaveData($data, $isUpdate){
+    public function getSaveData($data, $isUpdate)
+    {
         $dataInfo = [];
         $files = $this->container->get('files');
 
         if (array_key_exists('data', $data) && is_a_url($data['data'])) {
             $dataInfo = $files->getLink($data['data']);
+
             // Set the URL payload data
             $data['data'] = ArrayUtils::get($dataInfo, 'data');
             $data['filename_disk'] = ArrayUtils::get($dataInfo, 'filename');
             $data['filename_download'] = ArrayUtils::get($dataInfo, 'filename');
+            ArrayUtils::remove($dataInfo, 'filename');
         } else if (array_key_exists('data', $data) && !is_object($data['data'])) {
             $dataInfo = $files->getDataInfo($data['data']);
         }
@@ -100,11 +102,11 @@ class FilesServices extends AbstractService
             'location',
         ]));
 
-        if(!$isUpdate){
+        if (!$isUpdate) {
             $recordData['private_hash'] = get_random_string();
         }
 
-        return ArrayUtils::omit(array_merge($data,$recordData),['data','html']);
+        return ArrayUtils::omit(array_merge($data, $recordData), ['data', 'html']);
     }
 
     protected function findByPrivateHash($hash)
@@ -121,14 +123,14 @@ class FilesServices extends AbstractService
         $tableGateway = $this->createTableGateway($this->collection);
         $params['id'] = $id;
 
-        return $this->getItemsAndSetResponseCacheTags($tableGateway , $params);
+        return $this->getItemsAndSetResponseCacheTags($tableGateway, $params);
     }
 
     public function findByIds($id, array $params = [])
     {
         $tableGateway = $this->createTableGateway($this->collection);
 
-        return $this->getItemsByIdsAndSetResponseCacheTags($tableGateway , $id, $params);
+        return $this->getItemsByIdsAndSetResponseCacheTags($tableGateway, $id, $params);
     }
 
     public function update($id, array $data, array $params = [])
@@ -140,21 +142,21 @@ class FilesServices extends AbstractService
 
         $files = $this->container->get('files');
 
-        if(isset($data['data'])){
-            $result=$files->getFileSizeType($data['data']);
+        if (isset($data['data'])) {
+            $result = $files->getFileSizeType($data['data']);
 
-            if(get_directus_setting('file_mimetype_whitelist') != null){
-                validate_file($result['mimeType'],'mimeTypes');
+            if (get_directus_setting('file_mimetype_whitelist') != null) {
+                validate_file($result['mimeType'], 'mimeTypes');
             }
-            if(get_directus_setting('file_max_size') != null){
-                validate_file($result['size'],'maxSize');
+            if($result['mimeType'] != 'embed/vimeo' && $result['mimeType'] != 'embed/youtube'){
+              validate_file($result['size'], 'maxSize');
             }
         }
 
         $tableGateway = $this->createTableGateway($this->collection);
 
         $currentItem = $tableGateway->getOneData($id);
-        $currentFileName = ArrayUtils::get($currentItem, 'filename_disk');
+        $currentFileName = ArrayUtils::get($currentItem, 'filename_disk');        
 
         if (array_key_exists('filename_disk', $data) && $data['filename_disk'] !== $currentFileName) {
             $oldFilePath = $currentFileName;
@@ -162,8 +164,8 @@ class FilesServices extends AbstractService
 
             try {
                 $this->container->get('filesystem')->getAdapter()->rename($oldFilePath, $newFilePath);
-            } catch(Exception $e) {
-               throw new InvalidRequestException($e);
+            } catch (\Exception $e) {
+                throw new InvalidRequestException($e);
             }
         }
 
@@ -181,6 +183,9 @@ class FilesServices extends AbstractService
         $recordData = $this->getSaveData($data, true);
 
         $newFile = $tableGateway->updateRecord($id, $recordData, $this->getCRUDParams($params));
+
+        $thumb = $this->container->get('files_thumb');
+        $thumb->deleteThumb($currentItem);
 
         return $tableGateway->wrapData(
             \Directus\append_storage_information([$newFile->toArray()]),
@@ -202,8 +207,12 @@ class FilesServices extends AbstractService
         $files = $this->container->get('files');
         $files->delete($file);
 
+        //Force delete the thumbnails
+        $thumb = $this->container->get('files_thumb');
+        $thumb->deleteThumb($file);
+
         // Delete file record
-        return $tableGateway->deleteRecord($id,$this->getCRUDParams($params));
+        return $tableGateway->deleteRecord($id, $this->getCRUDParams($params));
     }
 
     public function findAll(array $params = [])

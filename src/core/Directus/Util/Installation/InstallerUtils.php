@@ -44,7 +44,7 @@ class InstallerUtils
     {
 
         if (
-            static::isUsingFiles() == false ||
+            Context::is_env() ||
             (!is_null($basePath) && !is_null($projectName))
         ) {
             $app = static::createApp($basePath, $projectName);
@@ -80,15 +80,6 @@ class InstallerUtils
             }
         }
     }
-    /**
-     * Check if environment is using files or environment variables
-     *
-     * @return boolean
-     */
-    public static function isUsingFiles()
-    {
-        return getenv("DIRECTUS_USE_ENV") !== "1";
-    }
 
     /**
      * Undocumented function
@@ -99,10 +90,10 @@ class InstallerUtils
      */
     public static function createApp($basePath, $projectName)
     {
-        if (static::isUsingFiles()) {
-            $config = require static::createConfigPath($basePath, $projectName);
-        } else {
+        if (Context::is_env()) {
             $config = Schema::get()->value(Context::from_env());
+        } else {
+            $config = require static::createConfigPath($basePath, $projectName);
         }
         return new Application($basePath, $config);
     }
@@ -479,7 +470,7 @@ class InstallerUtils
         $input = ArrayUtils::omit($data, ['private']);
         $configPath = static::createConfigPathFromData($path, $input);
 
-        static::ensureDirectoryIsWritable($path);
+        static::ensureDirectoryIsWritable($path . '/config');
         if ($force !== true) {
             static::ensureFileDoesNotExists($configPath);
         }
@@ -670,7 +661,7 @@ class InstallerUtils
      */
     public static function ensureConfigFileExists($basePath, $projectName)
     {
-        if (!self::isUsingFiles()) {
+        if (Context::is_env()) {
             return;
         }
 
@@ -730,10 +721,10 @@ class InstallerUtils
         $configPath = static::createConfigPath($basePath, $projectName);
         $migrationPath = $basePath . '/migrations/' . $migrationName;
 
-        if (self::isUsingFiles()) {
-            $apiConfig = ArrayUtils::get(require $configPath, 'database', []);
-        } else {
+        if (Context::is_env()) {
             $apiConfig = ArrayUtils::get(Schema::get()->value(Context::from_env()), 'database', []);
+        } else {
+            $apiConfig = ArrayUtils::get(require $configPath, 'database', []);
         }
 
         // Rename directus configuration to phinx configuration
@@ -961,6 +952,7 @@ class InstallerUtils
         $corsEnabled = ArrayUtils::get($data, 'cors_enabled', true);
         $authSecret = ArrayUtils::get($data, 'auth_secret', StringUtils::randomString(32, false));
         $authPublic = ArrayUtils::get($data, 'auth_public', generate_uuid4());
+        $ttl = ArrayUtils::get($data, 'ttl', 20);
 
         return ArrayUtils::defaults([
             'project' => '_',
@@ -984,6 +976,10 @@ class InstallerUtils
             ],
             'mail' => [
                 'transport' => 'sendmail',
+            ],
+            'cookie' => [
+                'same_site' => 'Lax',
+                'secure' => false,
             ],
             'cors' => [
                 'enabled' => $corsEnabled,
@@ -1013,6 +1009,7 @@ class InstallerUtils
             'auth' => [
                 'secret' => $authSecret,
                 'public' => $authPublic,
+                'ttl' => $ttl
             ]
         ], $data);
     }
